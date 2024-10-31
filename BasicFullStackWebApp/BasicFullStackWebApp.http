@@ -1,0 +1,6 @@
+@BasicFullStackWebApp_HostAddress = http://localhost:5064
+
+GET {{BasicFullStackWebApp_HostAddress}}/index/
+Accept: application/json
+
+###
