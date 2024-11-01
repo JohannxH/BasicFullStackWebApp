@@ -15,13 +15,13 @@ public class DataController : ControllerBase
     [HttpGet("protected-data")]
     public IActionResult GetProtectedData()
     {
-        return Ok(new { Data = "This is protected data." });
+        return Ok(new { Data = "This is protected data - thus the user needs to be logged in / authorized" });
     }
 
     [Authorize(Roles = "Admin")]
     [HttpGet("admin-data")]
     public IActionResult GetAdminData()
     {
-        return Ok(new { Data = "This is admin data." });
+        return Ok(new { Data = "This is admin data and require Admin Roles" });
     }
 }

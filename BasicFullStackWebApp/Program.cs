@@ -8,6 +8,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+builder.Services.AddSingleton<WebCrawlerService>();
+//builder.Services.AddHttpClient<WebCrawlerService>();
+
 
 // Add logging
 builder.Logging.ClearProviders();
@@ -31,7 +34,10 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuer = false,
         ValidateAudience = false,
         ValidateLifetime = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(builder.Configuration["JWT_KEY"]))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(builder.Configuration["JWT_KEY"])),
+        //IssuerSigningKey = new SymmetricSecurityKey(key),
+        ClockSkew = TimeSpan.Zero // Optional: Set clock skew to zero to ensure token expires exactly at token expiration time
+
     };
 });
 
@@ -57,27 +63,17 @@ else
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 
+app.UseRouting();
+
+// Add authentication and authorization middleware
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Add global error handling middleware
+app.UseMiddleware<ErrorHandlingMiddleware>();
 
 app.MapControllers();
 
 app.Run();
-
-// OLD CONFIG IF NEEDED
-//app.UseHttpsRedirection();
-//app.UseStaticFiles();
-
-//app.UseRouting();
-
-//// Add authentication and authorization middleware
-//app.UseAuthentication();
-//app.UseAuthorization();
-
-//// Add global error handling middleware
-//app.UseMiddleware<ErrorHandlingMiddleware>();
-
-//app.MapControllers();
-
-//app.Run();

@@ -20,42 +20,6 @@ public class AuthController : ControllerBase
         _configuration = configuration;
     }
 
-    [HttpPost("login")]
-    [AllowAnonymous] // This allows unauthenticated access to the login action
-    public IActionResult Login([FromBody] UserLogin userLogin)
-    {
-        var user = _context.Users.SingleOrDefault(u => u.Username == userLogin.Username);
-
-        if (user == null || !BCrypt.Net.BCrypt.Verify(userLogin.Password, user.Password))
-        {
-            return Unauthorized("Invalid username or password.");
-        }
-
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.ASCII.GetBytes(_configuration["JWT_KEY"]);
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(new[]
-            {
-                new Claim("id", user.Id.ToString()),
-                new Claim(ClaimTypes.Role, user.Role) // Add role claim
-            }),
-            Expires = DateTime.UtcNow.AddHours(1),
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-        };
-
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-        var tokenString = tokenHandler.WriteToken(token);
-
-        return Ok(new { token = tokenString });
-    }
-
-    [HttpGet("protected-data")]
-    public IActionResult GetProtectedData()
-    {
-        return Ok(new { Data = "This is protected data." });
-    }
-
     [HttpPost("register")]
     [AllowAnonymous]
     public IActionResult Register([FromBody] UserLogin userLogin)
@@ -83,11 +47,59 @@ public class AuthController : ControllerBase
         return Ok("User registered successfully.");
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpGet("admin-data")]
-    public IActionResult GetAdminData()
+    [HttpPost("login")]
+    [AllowAnonymous]
+    public IActionResult Login([FromBody] UserLogin userLogin)
     {
-        return Ok(new { Data = "This is admin data." });
+        var user = _context.Users.SingleOrDefault(u => u.Username == userLogin.Username);
+
+        if (user == null || !BCrypt.Net.BCrypt.Verify(userLogin.Password, user.Password))
+        {
+            return Unauthorized("Invalid username or password.");
+        }
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.ASCII.GetBytes(_configuration["JWT_KEY"]);
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[]
+            {
+                new Claim("id", user.Id.ToString()),
+                new Claim(ClaimTypes.Role, user.Role)
+            }),
+            Expires = DateTime.UtcNow.AddMinutes(5),
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+        };
+
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        var tokenString = tokenHandler.WriteToken(token);
+        string expiresString = "Token expires in 5 minutes at UTC: " + DateTime.UtcNow.AddMinutes(5).ToString();
+
+        // Log the token in the database
+        var tokenEntity = new Token
+        {
+            TokenString = tokenString,
+            UserId = user.Id,
+            IssuedAt = DateTime.UtcNow,
+            ExpiresAt = tokenDescriptor.Expires.Value
+        };
+
+        _context.Tokens.Add(tokenEntity);
+        _context.SaveChanges();
+
+        return Ok(new { token = tokenString, expires = expiresString, role = user.Role });
+    }
+
+    [HttpPost("logout")]
+    [AllowAnonymous]
+    public IActionResult Logout()
+    {
+        // Invalidate the token on the client side by removing it from the client storage
+        return Ok("User logged out successfully. " +
+            "\n" +
+            "\nNote:" +
+            "\n JWT tokens are stateless and cannot be invalidated on the server once issued - the actual logout process " +
+            "(i.e., invalidating the token) is typically handled on the client side using js");
     }
 }
 

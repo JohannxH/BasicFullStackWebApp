@@ -54,16 +54,16 @@ public class ApplicationDbContextTests
         // Insert seed data into the database using one instance of the context
         using (var context = new ApplicationDbContext(options))
         {
-            context.Tokens.Add(new Token { Value = "testtoken" });
+            context.Tokens.Add(new Token { TokenString = "testtoken" });
             context.SaveChanges();
         }
 
         // Use a separate instance of the context to verify correct data was saved to the database
         using (var context = new ApplicationDbContext(options))
         {
-            var token = context.Tokens.SingleOrDefault(t => t.Value == "testtoken");
+            var token = context.Tokens.SingleOrDefault(t => t.TokenString == "testtoken");
             Assert.NotNull(token);
-            Assert.Equal("testtoken", token.Value);
+            Assert.Equal("testtoken", token.TokenString);
         }
     }
 
