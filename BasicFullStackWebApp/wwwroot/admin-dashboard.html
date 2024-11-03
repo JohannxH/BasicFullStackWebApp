@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Dashboard</title>
+    <title>Admin Dashboard</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
         body {
@@ -26,26 +26,61 @@
         .nav-link {
             margin-right: 15px;
         }
+
+        .token-info {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="dashboard-container">
-        <h1 class="text-center">User Dashboard</h1>
+        <h1 class="text-center">Admin Dashboard</h1>
         <nav class="nav justify-content-center">
             <a class="nav-link" href="#">Home</a>
             <a class="nav-link" href="#">Profile</a>
-            <a class="nav-link" href="#">Settings</a>
+            <a class="nav-link" href="#" id="settings">Settings</a>
             <a class="nav-link" href="#" id="logout">Logout</a>
         </nav>
         <div class="content mt-4">
             <p>Welcome, User! Here you can view your profile, adjust settings, and more.</p>
         </div>
+        <div class="token-info">
+            <p id="token-issued">Token Issued At: </p>
+            <p id="token-expires">Token Expires At: </p>
+            <p id="countdown">Token expires in: </p>
+        </div>
     </div>
+    <script src="auth.js"></script>
     <script>
         document.getElementById('logout').addEventListener('click', () => {
             alert('Logging out...');
             window.location.href = 'index.html';
         });
+
+        document.getElementById('settings').addEventListener('click', () => {
+            alert('Navigating to settings...');
+            window.location.href = 'settings.html';
+        });
+
+        // Example usage of makeAuthenticatedRequest
+        async function loadUserData() {
+            try {
+                const response = await makeAuthenticatedRequest('/user/data');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.querySelector('.content').innerHTML = `<p>Welcome, ${data.username}! Here you can view your profile, adjust settings, and more.</p>`;
+                } else {
+                    console.error('Failed to fetch user data');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // Call loadUserData to fetch and display user data
+        loadUserData();
+        // Update token info on page load
+        updateTokenInfo();
     </script>
 </body>
 </html>

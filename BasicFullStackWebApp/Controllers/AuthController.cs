@@ -1,12 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using BCrypt.Net;
 
-[Authorize] // This will protect all actions in this controller by default
+[Authorize] // This will protect all actions in this controller by default using JWT bearer
 [Route("api/[controller]")]
 [ApiController]
 public class AuthController : ControllerBase
@@ -100,6 +100,56 @@ public class AuthController : ControllerBase
             "\nNote:" +
             "\n JWT tokens are stateless and cannot be invalidated on the server once issued - the actual logout process " +
             "(i.e., invalidating the token) is typically handled on the client side using js");
+    }
+
+    [HttpPost("refresh-token")]
+    [Authorize]
+    public IActionResult RefreshToken()
+    {
+        Debug.WriteLine("RefreshToken called");
+
+        var userId = User.FindFirst("id")?.Value;
+        if (userId == null)
+        {
+            return Unauthorized("Invalid token.");
+        }
+
+        var user = _context.Users.SingleOrDefault(u => u.Id == int.Parse(userId));
+        if (user == null)
+        {
+            return Unauthorized("User not found.");
+        }
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.ASCII.GetBytes(_configuration["JWT_KEY"]);
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[]
+            {
+                new Claim("id", user.Id.ToString()),
+                new Claim(ClaimTypes.Role, user.Role)
+            }),
+            Expires = DateTime.UtcNow.AddMinutes(5),
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+        };
+
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        var tokenString = tokenHandler.WriteToken(token);
+        string expiresString = "Token expires in 5 minutes at UTC: " + DateTime.UtcNow.AddMinutes(5).ToString();
+
+        // Log the new token in the database
+        var tokenEntity = new Token
+        {
+            TokenString = tokenString,
+            UserId = user.Id,
+            IssuedAt = DateTime.UtcNow,
+            ExpiresAt = tokenDescriptor.Expires.Value
+        };
+
+        _context.Tokens.Add(tokenEntity);
+        _context.SaveChanges();
+
+        return Ok(new { token = tokenString, expires = expiresString, role = user.Role });
     }
 }
 

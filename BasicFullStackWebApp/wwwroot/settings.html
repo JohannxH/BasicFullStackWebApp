@@ -1,0 +1,84 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Token Generator</title>
+    <style>
+        #tokenDisplay, #countdown {
+            margin-top: 20px;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <h1>JWT Token Generator</h1>
+    <div id="tokenDisplay">
+        <strong>Current JWT Token:</strong>
+        <p id="token"></p>
+    </div>
+    <div id="countdown">
+        <strong>Token Expires In:</strong>
+        <p id="timer"></p>
+    </div>
+
+    <script>
+        // Function to make an AJAX call to refresh the token
+        function refreshToken() {
+            fetch('/refresh-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('jwtToken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
+                    localStorage.setItem('jwtToken', data.token);
+                    document.getElementById('token').textContent = data.token;
+                    startCountdown(300); // 5 minutes countdown
+                } else {
+                    console.error('Failed to refresh token:', data);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        // Function to start the countdown timer
+        function startCountdown(seconds) {
+            let remainingTime = seconds;
+            const timerElement = document.getElementById('timer');
+
+            const countdownInterval = setInterval(() => {
+                const minutes = Math.floor(remainingTime / 60);
+                const seconds = remainingTime % 60;
+                timerElement.textContent = `${minutes}m ${seconds}s`;
+
+                if (remainingTime <= 0) {
+                    clearInterval(countdownInterval);
+                    timerElement.textContent = 'Token expired. Refreshing...';
+                    refreshToken();
+                }
+
+                remainingTime--;
+            }, 1000);
+        }
+
+        // Event listener for user activity
+        function userActivity() {
+            clearTimeout(window.activityTimeout);
+            window.activityTimeout = setTimeout(refreshToken, 5000); // Refresh token after 5 seconds of inactivity
+        }
+
+        // Add event listeners for user activity
+        window.addEventListener('mousemove', userActivity);
+        window.addEventListener('keydown', userActivity);
+        window.addEventListener('scroll', userActivity);
+        window.addEventListener('click', userActivity);
+
+        // Initial call to set the timeout
+        userActivity();
+    </script>
+</body>
+</html>
